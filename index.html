@@ -1,0 +1,527 @@
+
+
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>Barry Martin's Hopalong Orbits Visualizer - WebVR</title>
+        <meta property="title" content="Barry Martin's Hopalong Orbits Visualizer - WebVR"/>
+        <meta property="description" content="An interactive flight through attractor orbits generated using Barry Martin's Hopalong formula."/>
+
+        <meta property="og:title" content="Barry Martin's Hopalong Orbits Visualizer - WebVR"/>
+        <meta property="og:image" content="http://hopalongvr.dghost.net/image.jpg"/>
+        <meta property="og:description" content="An interactive flight through attractor orbits generated using Barry Martin's Hopalong formula."/>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <canvas id="render-canvas"></canvas>
+        <style>
+            body {
+                background-color: #000000;
+                margin: 0px;
+                overflow: hidden;
+                font-family:Monospace;
+                font-size:13px;
+                text-align:center;
+                font-weight: bold;
+                text-align:center;
+            }
+            a {
+                color:#ffffaa;
+            }
+            #render-canvas {
+              width: 100%;
+              height: 100%;
+              position: absolute;
+              top: 0;
+              left: 0;
+            }
+            #info {
+                color: #fff;
+                position: absolute;
+                top: 0px; width: 100%;
+                padding: 5px;
+                z-index: 100;
+            }
+
+            #about {
+                    text-align:left;
+                    z-index:110;
+                    position:absolute;
+                    top: 25px;
+                    left: 5px;
+                    display:none;
+                    width: 400px;
+                    color:#fff; background: #121212; opacity:0.8; border-radius:20px; padding: 16px
+            }
+            #aboutlink {
+                z-index:110;
+                    position:absolute;
+                    top: 5px;
+                    left: 5px;
+            }
+        </style>
+    </head>
+    <body>
+
+    <script src="js/Three.js"></script>
+    <script src="js/ColorConverter.js"></script>
+    <script src="js/VRRenderer.js"></script>
+    <script src="js/Detector.js"></script>
+    <script src="js/RequestAnimationFrame.js"></script>
+
+    <script>
+          /*
+           * AUTHOR: Iacopo Sassarini
+           * WebVR Port: Luke Groeninger
+           */
+
+        if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+        var VISUALS_VISIBLE = true;
+
+        var SCALE_FACTOR = 1500;
+        var CAMERA_BOUND = 200;
+
+        var NUM_POINTS_SUBSET = 20000;
+        var NUM_SUBSETS       = 7;
+        var NUM_POINTS = NUM_POINTS_SUBSET * NUM_SUBSETS;
+
+        var NUM_LEVELS = 10;
+        var LEVEL_DEPTH = 400;
+
+        var DEF_BRIGHTNESS = 1;
+        var DEF_SATURATION = 0.8;
+
+        var SPRITE_SIZE = Math.ceil(3 * window.innerWidth /1600);
+
+        // Orbit parameters constraints
+        var A_MIN = -30;
+        var A_MAX = 30;
+        var B_MIN = .2;
+        var B_MAX = 1.8;
+        var C_MIN = 5;
+        var C_MAX = 17;
+        var D_MIN = 0;
+        var D_MAX = 10;
+        var E_MIN = 0;
+        var E_MAX = 12;
+
+        // Orbit parameters
+        var a, b, c, d, e;
+
+        // Orbit data
+        var orbit = {
+            subsets: [],
+            xMin: 0,
+            xMax: 0,
+            yMin: 0,
+            yMax: 0,
+            scaleX: 0,
+            scaleY: 0
+        }
+        // Initialize data points
+        for (var i = 0; i < NUM_SUBSETS; i++){
+            var subsetPoints = [];
+            for (var j = 0; j < NUM_POINTS_SUBSET; j++){
+                subsetPoints[j] = {
+                    x: 0,
+                    y: 0,
+                    vertex:  new THREE.Vector3(0,0,0)
+                };
+            }
+            orbit.subsets.push(subsetPoints);
+        }
+
+        var container;
+        var camera, scene, renderer, vrrenderer, composer, hueValues = [];
+        var renderCanvas, vrHMD, vrHMDSensor;
+
+        var mouseX = 0, mouseY = 0;
+        var renderTargetWidth = window.innerWidth;
+        var renderTargetHeight = window.innerHeight;
+
+        var windowHalfX = window.innerWidth / 2;
+        var windowHalfY = window.innerHeight / 2;
+
+        var speed = 1.5;
+        var rotationSpeed = 0.002;
+        var vrSupported = false;
+        var vrEnabled = false;
+
+        window.addEventListener("load", function() {
+          if (navigator.getVRDevices) {
+            navigator.getVRDevices().then(vrDeviceCallback);
+          } else if (navigator.mozGetVRDevices) {
+            navigator.mozGetVRDevices(vrDeviceCallback);
+          } else {
+            init();
+            animate();
+          }
+
+        }, false);
+
+        function vrDeviceCallback(vrdevs) {
+          vrSupported = true;
+          var div = document.getElementById('info')
+          div.innerHTML = div.innerHTML + "        <br /> [F] Toggle VR Rendering          ";
+          for (var i = 0; i < vrdevs.length; ++i) {
+            if (vrdevs[i] instanceof HMDVRDevice) {
+              vrHMD = vrdevs[i];
+              break;
+            }
+          }
+          for (var i = 0; i < vrdevs.length; ++i) {
+            if (vrdevs[i] instanceof PositionSensorVRDevice &&
+              vrdevs[i].hardwareUnitId == vrHMD.hardwareUnitId) {
+                vrHMDSensor = vrdevs[i];
+                break;
+              }
+            }
+            init();
+            animate();
+          }
+
+        function init() {
+            renderCanvas = document.getElementById("render-canvas");
+
+            renderer = new THREE.WebGLRenderer({
+              canvas: renderCanvas,
+              clearColor: 0x000000, clearAlpha: 1,
+              antialias: false,
+            });
+
+            SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
+
+            sprite1 = THREE.ImageUtils.loadTexture( "galaxy.png" );
+
+            camera = new THREE.PerspectiveCamera(60, renderTargetWidth / renderTargetHeight, 1, 3 * SCALE_FACTOR );
+            camera.position.set( 0, 0 , SCALE_FACTOR/2);
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2( 0x000000, 0.0012);
+
+            generateOrbit();
+
+            for (var s = 0; s < NUM_SUBSETS; s++){hueValues[s] = Math.random();}
+
+            // Create particle systems
+            for (var k = 0; k < NUM_LEVELS; k++){
+                for (var s = 0; s < NUM_SUBSETS; s++){
+                    var geometry = new THREE.Geometry();
+                    for (var i = 0; i < NUM_POINTS_SUBSET; i++){geometry.vertices.push( orbit.subsets[s][i].vertex);}
+                    var materials = new THREE.PointCloudMaterial( { size: (SPRITE_SIZE ), map: sprite1, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+                    THREE.ColorConverter.setHSV( materials.color, hueValues[s], DEF_SATURATION, DEF_BRIGHTNESS);
+                    var particles = new THREE.PointCloud( geometry, materials );
+                    particles.myMaterial = materials;
+                    particles.myLevel = k;
+                    particles.mySubset = s;
+                    particles.position.x = 0;
+                    particles.position.y = 0;
+                    particles.position.z = - LEVEL_DEPTH * k - (s  * LEVEL_DEPTH / NUM_SUBSETS) + SCALE_FACTOR/2;
+                    particles.needsUpdate = 0;
+                    scene.add( particles );
+                }
+            }
+
+            // Setup renderer and effects
+            renderer.setSize(renderTargetWidth, renderTargetHeight );
+
+            if (vrSupported) {
+              vrrenderer = new THREE.VRRenderer(renderer, vrHMD);
+            }
+
+            // Setup listeners
+            document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+            document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+            document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+            document.addEventListener( 'keydown', onKeyDown, false );
+            document.addEventListener("webkitfullscreenchange", onFullscreenChange, false);
+            document.addEventListener("mozfullscreenchange", onFullscreenChange, false);
+            window.addEventListener( 'resize', onWindowResize, false );
+            window.addEventListener("keypress", function(e) {
+              if (e.charCode == 'f'.charCodeAt(0)) {
+                if (vrSupported) {
+                  if (renderCanvas.mozRequestFullScreen) {
+                    renderCanvas.mozRequestFullScreen({
+                      vrDisplay: vrHMD
+                    });
+                  } else if (renderCanvas.webkitRequestFullscreen) {
+                    renderCanvas.webkitRequestFullscreen({
+                      vrDisplay: vrHMD,
+                    });
+                  }
+                }
+              }
+            }, false);
+
+            setInterval(updateOrbit, 7000);
+            
+        }
+
+        function animate() {
+            requestAnimationFrame( animate );
+            render();
+        }
+
+        function render() {
+
+          if (vrEnabled) {
+            var state = vrHMDSensor.getState();
+            camera.position.set(state.position.x * 50,
+              state.position.y * 50,
+              state.position.z * 50 + SCALE_FACTOR/2);
+            camera.quaternion.set(state.orientation.x,
+              state.orientation.y,
+              state.orientation.z,
+              state.orientation.w);
+          } else {
+            if (camera.position.x >= - CAMERA_BOUND && camera.position.x <= CAMERA_BOUND){
+              camera.position.x += ( mouseX - camera.position.x ) * 0.05;
+              if (camera.position.x < - CAMERA_BOUND) camera.position.x = -CAMERA_BOUND;
+              if (camera.position.x >  CAMERA_BOUND) camera.position.x = CAMERA_BOUND;
+            }
+            if (camera.position.y >= - CAMERA_BOUND && camera.position.y <= CAMERA_BOUND){
+              camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
+              if (camera.position.y < - CAMERA_BOUND) camera.position.y = -CAMERA_BOUND;
+              if (camera.position.y >  CAMERA_BOUND) camera.position.y = CAMERA_BOUND;
+            }
+            camera.lookAt( scene.position );
+          }
+
+            for( i = 0; i < scene.children.length; i++ ) {
+                scene.children[i].position.z += speed;
+                scene.children[i].rotation.z += rotationSpeed;
+                if (scene.children[i].position.z >= ((NUM_LEVELS -1) * LEVEL_DEPTH/2.0)){
+                    scene.children[i].position.z = -((NUM_LEVELS -1) * LEVEL_DEPTH/2.0);
+                    if (scene.children[i].needsUpdate == 1){
+                        scene.children[i].geometry.verticesNeedUpdate = true;
+                        THREE.ColorConverter.setHSV( scene.children[i].myMaterial.color, hueValues[scene.children[i].mySubset], DEF_SATURATION, DEF_BRIGHTNESS);
+                        scene.children[i].needsUpdate = 0;
+                    }
+                }
+            }
+
+            if (vrEnabled) {
+              vrrenderer.render(scene, camera);
+            } else {
+              renderer.render(scene, camera);
+            }
+
+          }
+
+        ///////////////////////////////////////////////
+        // Hopalong Orbit Generator
+        ///////////////////////////////////////////////
+        function updateOrbit(){
+            generateOrbit();
+            for (var s = 0; s < NUM_SUBSETS; s++){
+                hueValues[s] = Math.random();
+            }
+            for( i = 0; i < scene.children.length; i++ ) {
+                scene.children[i].needsUpdate = 1;
+            }
+
+        }
+
+        function generateOrbit(){
+            var x, y, z, x1;
+            var idx = 0;
+
+            prepareOrbit();
+
+            // Using local vars should be faster
+            var al = a;
+            var bl = b;
+            var cl = c;
+            var dl = d;
+            var el = e;
+            var subsets = orbit.subsets;
+            var num_points_subset_l = NUM_POINTS_SUBSET;
+            var num_points_l = NUM_POINTS;
+            var scale_factor_l = SCALE_FACTOR;
+
+            var xMin = 0, xMax = 0, yMin = 0, yMax = 0;
+
+            for (var s = 0; s < NUM_SUBSETS; s++){
+
+                // Use a different starting point for each orbit subset
+                x = s * .005 * (0.5-Math.random());
+                y = s * .005 * (0.5-Math.random());
+
+                var curSubset = subsets[s];
+
+                for (var i = 0; i < num_points_subset_l; i++){
+
+                    // Iteration formula (generalization of the Barry Martin's original one)
+                    z = (dl + Math.sqrt(Math.abs(bl * x - cl)));
+                    if (x > 0) {x1 = y - z;}
+                    else if (x == 0) {x1 = y;}
+                    else {x1 = y + z;}
+                    y = al - x;
+                    x = x1 + el;
+
+                    curSubset[i].x = x;
+                    curSubset[i].y = y;
+
+                    if (x < xMin) {xMin = x;}
+                    else if (x > xMax) {xMax = x;}
+                    if (y < yMin) {yMin = y;}
+                    else if (y > yMax) {yMax = y;}
+
+                    idx++;
+                }
+            }
+
+            var scaleX = 2 * scale_factor_l / (xMax - xMin);
+            var scaleY = 2 * scale_factor_l / (yMax - yMin);
+
+            orbit.xMin = xMin;
+            orbit.xMax = xMax;
+            orbit.yMin = yMin;
+            orbit.yMax = yMax;
+            orbit.scaleX = scaleX;
+            orbit.scaleY = scaleY;
+
+            // Normalize and update vertex data
+            for (var s = 0; s < NUM_SUBSETS; s++){
+                var curSubset = subsets[s];
+                for (var i = 0; i < num_points_subset_l; i++){
+                    curSubset[i].vertex.x = scaleX * (curSubset[i].x - xMin) - scale_factor_l;
+                    curSubset[i].vertex.y = scaleY * (curSubset[i].y - yMin) - scale_factor_l;
+                }
+            }
+        }
+
+        function prepareOrbit(){
+            shuffleParams();
+            orbit.xMin = 0;
+            orbit.xMax = 0;
+            orbit.yMin = 0;
+            orbit.yMax = 0;
+        }
+
+        function shuffleParams() {
+            a = A_MIN + Math.random() * (A_MAX - A_MIN);
+            b = B_MIN + Math.random() * (B_MAX - B_MIN);
+            c = C_MIN + Math.random() * (C_MAX - C_MIN);
+            d = D_MIN + Math.random() * (D_MAX - D_MIN);
+            e = E_MIN + Math.random() * (E_MAX - E_MIN);
+        }
+
+        ///////////////////////////////////////////////
+        // Event listeners
+        ///////////////////////////////////////////////
+        function onDocumentMouseMove( event ) {
+            mouseX = event.clientX - windowHalfX;
+            mouseY = event.clientY - windowHalfY;
+        }
+
+        function onDocumentTouchStart( event ) {
+            if ( event.touches.length == 1 ) {
+                event.preventDefault();
+                mouseX = event.touches[ 0 ].pageX - windowHalfX;
+                mouseY = event.touches[ 0 ].pageY - windowHalfY;
+            }
+        }
+
+        function onDocumentTouchMove( event ) {
+            if ( event.touches.length == 1 ) {
+                event.preventDefault();
+                mouseX = event.touches[ 0 ].pageX - windowHalfX;
+                mouseY = event.touches[ 0 ].pageY - windowHalfY;
+            }
+        }
+
+        function onFullscreenChange() {
+          if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
+            vrEnabled = false;
+            renderer.enableScissorTest ( false );
+
+          } else {
+            vrEnabled = true;
+
+          }
+          onWindowResize();
+        }
+
+        function onWindowResize( event ) {
+          renderTargetWidth = window.innerWidth;
+          renderTargetHeight = window.innerHeight;
+          windowHalfX = window.innerWidth / 2;
+          windowHalfY = window.innerHeight / 2;
+
+          if (vrEnabled)  {
+            if ('getRecommendedEyeRenderRect' in vrHMD) {
+              var leftEyeViewport = vrHMD.getRecommendedEyeRenderRect("left");
+              var rightEyeViewport = vrHMD.getRecommendedEyeRenderRect("right");
+              renderTargetWidth = leftEyeViewport.width + rightEyeViewport.width;
+              renderTargetHeight = Math.max(leftEyeViewport.height, rightEyeViewport.height);
+            } else {
+              renderer.setViewport( 0, 0, window.innerWidth, window.innerHeight );
+              camera.position.set( 0, 0 , SCALE_FACTOR/2);
+            }
+          }
+          SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
+          camera.aspect = renderTargetWidth / renderTargetHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize( renderTargetWidth, renderTargetHeight );
+        }
+
+        function onKeyDown(event){
+            if(event.keyCode == 38 && speed < 20) speed += .5;
+            else if(event.keyCode == 40 && speed > 0) speed -= .5;
+            else if(event.keyCode == 37) rotationSpeed += .001;
+            else if(event.keyCode == 39) rotationSpeed -= .001;
+            else if(event.keyCode == 72 || event.keyCode == 104) toggleVisuals();
+        }
+
+        function showHideAbout() {
+            if (document.getElementById('about').style.display == "block") {
+                document.getElementById('about').style.display = "none";
+            } else {
+                document.getElementById('about').style.display = "block";
+            }
+        }
+
+        function toggleVisuals(){
+            if(VISUALS_VISIBLE){
+
+                document.getElementById('aboutlink').style.display = 'none';
+                document.getElementById('about').style.display = 'none';
+                document.getElementById('info').style.display = 'none';
+                renderer.domElement.style.cursor = "none";
+                VISUALS_VISIBLE = false;
+            }
+            else {
+                document.getElementById('aboutlink').style.display = 'block';
+                document.getElementById('info').style.display = 'block';
+                renderer.domElement.style.cursor = "";
+                VISUALS_VISIBLE = true;
+            }
+        }
+        </script>
+
+        <div id="info">Barry Martin's Hopalong Orbits Visualizer - Created for WebVR using <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a>
+        <br /> [Up-Down] Control speed - [Left-Right] Control rotation
+        <br /> [H] Toggle info and cursor - [F11] Toggle fullscreen
+        </div>
+
+        <div id="aboutlink">
+        <a href="javascript:showHideAbout()">About</a>
+    </div>
+    <div id="about">
+            <b>Barry Martin's Hopalong Orbits Visualizer</b>
+            <p>These orbits are generated iterating this simple algorithm:</p>
+
+            <p>(x, y) -> (y - sign(x)*sqrt(abs(b*x - c)), a -x )</p>
+
+            <p>where a, b, c are random parameters. This is known as the 'Hopalong Attractor'.</p>
+            <p>3D rendering is done using WebGL and <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a></p>
+            <hr>
+            <p><a href="http://iacopoapps.appspot.com/hopalongwebgl/">Original version</a> by <a href="https://plus.google.com/113975837825449148012?rel=author">Iacopo Sassarini</a></p>
+            <p>WebVR port by <a href="http://dghost.net">Luke Groeninger</a></p>
+
+    </div>
+
+    </body>
+</html>
