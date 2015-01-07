@@ -255,7 +255,7 @@
             }, false);
 
             setInterval(updateOrbit, 7000);
-            
+
         }
 
         function animate() {
@@ -456,12 +456,17 @@
               var rightEyeViewport = vrHMD.getRecommendedEyeRenderRect("right");
               renderTargetWidth = leftEyeViewport.width + rightEyeViewport.width;
               renderTargetHeight = Math.max(leftEyeViewport.height, rightEyeViewport.height);
-            } else {
+              SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /3200);
+		        } else {
               renderer.setViewport( 0, 0, window.innerWidth, window.innerHeight );
               camera.position.set( 0, 0 , SCALE_FACTOR/2);
+              SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
             }
           }
-          SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
+          for (var i = 0; i < scene.children.length; i++){
+            scene.children[i].myMaterial.size = SPRITE_SIZE;
+          }
+          
           camera.aspect = renderTargetWidth / renderTargetHeight;
           camera.updateProjectionMatrix();
           renderer.setSize( renderTargetWidth, renderTargetHeight );
