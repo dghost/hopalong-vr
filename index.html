@@ -291,8 +291,8 @@
             for( i = 0; i < scene.children.length; i++ ) {
                 scene.children[i].position.z += speed;
                 scene.children[i].rotation.z += rotationSpeed;
-                if (scene.children[i].position.z >= ((NUM_LEVELS -1) * LEVEL_DEPTH/2.0)){
-                    scene.children[i].position.z = -((NUM_LEVELS -1) * LEVEL_DEPTH/2.0);
+                if (scene.children[i].position.z >= ((NUM_LEVELS/2) -1) * LEVEL_DEPTH + SCALE_FACTOR) {
+                    scene.children[i].position.z = -((NUM_LEVELS/2) -1) * LEVEL_DEPTH;
                     if (scene.children[i].needsUpdate == 1){
                         scene.children[i].geometry.verticesNeedUpdate = true;
                         THREE.ColorConverter.setHSV( scene.children[i].myMaterial.color, hueValues[scene.children[i].mySubset], DEF_SATURATION, DEF_BRIGHTNESS);
