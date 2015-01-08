@@ -185,11 +185,11 @@
 
             if (vrSupported) {
               var div = document.getElementById('info')
-              div.innerHTML = div.innerHTML + "[F] Toggle VR Rendering";
+              div.innerHTML = div.innerHTML + "        <br /> [F] Toggle VR rendering - [R] Reset sensor orientation";
             } else {
               var div = document.getElementById('info')
-              div.innerHTML = div.innerHTML + "[F11] Toggle fullscreen";
-              div.innerHTML = div.innerHTML + "<br />A <a href=http://webvr.info>WebVR compatible browser</a> is required for VR mode";
+              div.innerHTML = div.innerHTML + "        <br /> [H] Toggle info and cursor - [F11] Toggle fullscreen";
+              div.innerHTML = div.innerHTML + "        <br />A <a href=http://webvr.info>WebVR compatible browser</a> is required for VR mode";
             }
             renderer = new THREE.WebGLRenderer({
               canvas: renderCanvas,
@@ -242,24 +242,10 @@
             document.addEventListener( 'touchstart', onDocumentTouchStart, false );
             document.addEventListener( 'touchmove', onDocumentTouchMove, false );
             document.addEventListener( 'keydown', onKeyDown, false );
-            document.addEventListener("webkitfullscreenchange", onFullscreenChange, false);
-            document.addEventListener("mozfullscreenchange", onFullscreenChange, false);
+            document.addEventListener( 'webkitfullscreenchange', onFullscreenChange, false);
+            document.addEventListener( 'mozfullscreenchange', onFullscreenChange, false);
             window.addEventListener( 'resize', onWindowResize, false );
-            window.addEventListener("keypress", function(e) {
-              if (e.charCode == 'f'.charCodeAt(0)) {
-                if (vrSupported) {
-                  if (renderCanvas.mozRequestFullScreen) {
-                    renderCanvas.mozRequestFullScreen({
-                      vrDisplay: vrHMD
-                    });
-                  } else if (renderCanvas.webkitRequestFullscreen) {
-                    renderCanvas.webkitRequestFullscreen({
-                      vrDisplay: vrHMD,
-                    });
-                  }
-                }
-              }
-            }, false);
+            window.addEventListener( 'keypress', onKeyPress, false);
 
             setInterval(updateOrbit, 7000);
 
@@ -477,11 +463,33 @@
         }
 
         function onKeyDown(event){
-            if(event.keyCode == 38 && speed < 20) speed += .5;
-            else if(event.keyCode == 40 && speed > 0) speed -= .5;
-            else if(event.keyCode == 37) rotationSpeed += .001;
-            else if(event.keyCode == 39) rotationSpeed -= .001;
-            else if(event.keyCode == 72 || event.keyCode == 104) toggleVisuals();
+          if(event.keyCode == 38 && speed < 20) speed += .5;
+          else if(event.keyCode == 40 && speed > 0) speed -= .5;
+          else if(event.keyCode == 37) rotationSpeed += .001;
+          else if(event.keyCode == 39) rotationSpeed -= .001;
+        }
+
+        function onKeyPress(event){
+          if (vrSupported) {
+            if (event.which == 70 || event.which == 102) {
+              if (renderCanvas.mozRequestFullScreen) {
+                renderCanvas.mozRequestFullScreen({
+                  vrDisplay: vrHMD
+                });
+              } else if (renderCanvas.webkitRequestFullscreen) {
+                renderCanvas.webkitRequestFullscreen({
+                  vrDisplay: vrHMD,
+                });
+              }
+            }
+            if (event.which == 82 || event.which == 114) {
+              vrHMDSensor.zeroSensor();
+            }
+          } else {
+            if(event.which == 72 || event.which == 104) {
+              toggleVisuals();
+            }
+          }
         }
 
         function showHideAbout() {
@@ -512,7 +520,6 @@
 
         <div id="info">Barry Martin's Hopalong Orbits Visualizer - Created using <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> and <a href="https://github.com/wwwtyro/three-vr-renderer" target="_blank">vrrenderer.js</a>
         <br /> [Up-Down] Control speed - [Left-Right] Control rotation
-        <br /> [H] Toggle info and cursor -
         </div>
 
         <div id="aboutlink">
