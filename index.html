@@ -162,8 +162,7 @@
 
         function vrDeviceCallback(vrdevs) {
           vrSupported = true;
-          var div = document.getElementById('info')
-          div.innerHTML = div.innerHTML + "        <br /> [F] Toggle VR Rendering          ";
+
           for (var i = 0; i < vrdevs.length; ++i) {
             if (vrdevs[i] instanceof HMDVRDevice) {
               vrHMD = vrdevs[i];
@@ -184,6 +183,13 @@
         function init() {
             renderCanvas = document.getElementById("render-canvas");
 
+            if (vrSupported) {
+              var div = document.getElementById('info')
+              div.innerHTML = div.innerHTML + "[F] Toggle VR Rendering";
+            } else {
+              var div = document.getElementById('info')
+              div.innerHTML = div.innerHTML + "[F11] Toggle fullscreen";
+            }
             renderer = new THREE.WebGLRenderer({
               canvas: renderCanvas,
               clearColor: 0x000000, clearAlpha: 1,
@@ -306,7 +312,6 @@
             } else {
               renderer.render(scene, camera);
             }
-
           }
 
         ///////////////////////////////////////////////
@@ -436,10 +441,8 @@
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
             vrEnabled = false;
             renderer.enableScissorTest ( false );
-
           } else {
             vrEnabled = true;
-
           }
           onWindowResize();
         }
@@ -508,7 +511,7 @@
 
         <div id="info">Barry Martin's Hopalong Orbits Visualizer - Created using <a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> and <a href="https://github.com/wwwtyro/three-vr-renderer" target="_blank">vrrenderer.js</a>
         <br /> [Up-Down] Control speed - [Left-Right] Control rotation
-        <br /> [H] Toggle info and cursor - [F11] Toggle fullscreen
+        <br /> [H] Toggle info and cursor -
         </div>
 
         <div id="aboutlink">
