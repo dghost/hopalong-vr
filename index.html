@@ -249,13 +249,19 @@
 
         function render() {
           requestAnimationFrame(render);
-          if (vrEnabled) {
+
+          if (vrEnabled && vrHMDSensor) {
+            // get state
             var state = vrHMDSensor.getState();
+
+            // if the position is reported use it
             if (state.position) {
               camera.position.set(state.position.x * 50,
                 state.position.y * 50,
                 state.position.z * 50 + SCALE_FACTOR/2);
             }
+
+            // if the orientation is reported use it
             if (state.orientation) {
               camera.quaternion.set(state.orientation.x,
                 state.orientation.y,
@@ -265,6 +271,7 @@
               camera.lookAt( scene.position );
             }
           } else {
+            // move the camera position based on mouse position/taps
             if (camera.position.x >= - CAMERA_BOUND && camera.position.x <= CAMERA_BOUND){
               camera.position.x += ( mouseX - camera.position.x ) * 0.05;
               if (camera.position.x < - CAMERA_BOUND) camera.position.x = -CAMERA_BOUND;
@@ -275,28 +282,34 @@
               if (camera.position.y < - CAMERA_BOUND) camera.position.y = -CAMERA_BOUND;
               if (camera.position.y >  CAMERA_BOUND) camera.position.y = CAMERA_BOUND;
             }
+            // look straight ahead
             camera.lookAt( scene.position );
           }
 
-            for( i = 0; i < scene.children.length; i++ ) {
-                scene.children[i].position.z += speed;
-                scene.children[i].rotation.z += rotationSpeed;
-                if (scene.children[i].position.z >= ((NUM_LEVELS/2) -1) * LEVEL_DEPTH + SCALE_FACTOR) {
-                    scene.children[i].position.z = -((NUM_LEVELS/2) -1) * LEVEL_DEPTH;
-                    if (scene.children[i].needsUpdate == 1){
-                        scene.children[i].geometry.verticesNeedUpdate = true;
-                        THREE.ColorConverter.setHSV( scene.children[i].myMaterial.color, hueValues[scene.children[i].mySubset], DEF_SATURATION, DEF_BRIGHTNESS);
-                        scene.children[i].needsUpdate = 0;
-                    }
-                }
-            }
-
-            if (vrEnabled) {
-              vrrenderer.render(scene, camera);
-            } else {
-              renderer.render(scene, camera);
+          // update particle positions
+          for( i = 0; i < scene.children.length; i++ ) {
+            scene.children[i].position.z += speed;
+            scene.children[i].rotation.z += rotationSpeed;
+            // if the particle level has passed the fade distance
+            if (scene.children[i].position.z >= ((NUM_LEVELS/2) -1) * LEVEL_DEPTH + SCALE_FACTOR) {
+              // move the particle level back in front of the camera
+              scene.children[i].position.z = -((NUM_LEVELS/2) -1) * LEVEL_DEPTH;
+              if (scene.children[i].needsUpdate == 1){
+                // update the geometry and color
+                scene.children[i].geometry.verticesNeedUpdate = true;
+                THREE.ColorConverter.setHSV( scene.children[i].myMaterial.color, hueValues[scene.children[i].mySubset], DEF_SATURATION, DEF_BRIGHTNESS);
+                scene.children[i].needsUpdate = 0;
+              }
             }
           }
+
+          // call the proper renderer
+          if (vrEnabled) {
+            vrrenderer.render(scene, camera);
+          } else {
+            renderer.render(scene, camera);
+          }
+        }
 
         ///////////////////////////////////////////////
         // Hopalong Orbit Generator
@@ -423,14 +436,18 @@
         function onFullscreenChange() {
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
             vrEnabled = false;
+            // unhide the mouse and set the device pixel ratio correctly
             renderer.domElement.style.cursor = "";
             renderer.devicePixelRatio = window.devicePixelRatio || 1;
           } else {
             vrEnabled = true;
+            // reset the camera position
             camera.position.set( 0, 0 , SCALE_FACTOR/2);
+            // hide the mouse, and set the device pixel ratio to 1
             renderer.domElement.style.cursor = "none";
             renderer.devicePixelRatio = 1;
           }
+          // force resolution change
           onWindowResize();
         }
 
@@ -448,11 +465,11 @@
               renderTargetWidth = leftEyeViewport.width + rightEyeViewport.width;
               renderTargetHeight = Math.max(leftEyeViewport.height, rightEyeViewport.height);
 		        }
+            // only scale the sprites to half the size for VR
             SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /3200);
           } else {
             SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
           }
-
 
           // rescale sprites for new resolution
           for (var i = 0; i < scene.children.length; i++){
@@ -470,6 +487,7 @@
         }
 
         function onKeyDown(event){
+          // hande up/down/left/right keys
           if(event.keyCode == 38 && speed < 20) speed += 0.5;
           else if(event.keyCode == 40 && speed > 0) speed -= 0.5;
           else if(event.keyCode == 37) rotationSpeed += 0.001;
@@ -478,6 +496,7 @@
 
         function onKeyPress(event){
           if (vrSupported) {
+            // handle 'f'
             if (event.which == 70 || event.which == 102) {
               if (renderer.domElement.mozRequestFullScreen) {
                 renderer.domElement.mozRequestFullScreen({
@@ -489,10 +508,12 @@
                 });
               }
             }
+            // handle 'z'
             if (event.which == 82 || event.which == 114) {
               vrHMDSensor.zeroSensor();
             }
           } else {
+            // handle 'h'
             if(event.which == 72 || event.which == 104) {
               toggleVisuals();
             }
