@@ -192,6 +192,7 @@
             renderer = new THREE.WebGLRenderer({
               clearColor: 0x000000, clearAlpha: 1,
               antialias: false,
+              devicePixelRatio: window.devicePixelRatio || 1,
             });
 
             // Setup renderer and effects
@@ -417,10 +418,12 @@
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
             vrEnabled = false;
             renderer.domElement.style.cursor = "";
+            renderer.devicePixelRatio = window.devicePixelRatio || 1;
           } else {
             vrEnabled = true;
             camera.position.set( 0, 0 , SCALE_FACTOR/2);
             renderer.domElement.style.cursor = "none";
+            renderer.devicePixelRatio = 1;
           }
           onWindowResize();
         }
