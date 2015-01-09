@@ -418,9 +418,11 @@
         function onFullscreenChange() {
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
             vrEnabled = false;
+            renderer.domElement.style.cursor = "";
           } else {
             vrEnabled = true;
             camera.position.set( 0, 0 , SCALE_FACTOR/2);
+            renderer.domElement.style.cursor = "none";
           }
           onWindowResize();
         }
