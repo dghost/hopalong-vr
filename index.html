@@ -122,6 +122,7 @@
             scaleX: 0,
             scaleY: 0
         }
+
         // Initialize data points
         for (var i = 0; i < NUM_SUBSETS; i++){
             var subsetPoints = [];
@@ -237,11 +238,11 @@
             document.addEventListener( 'mousemove', onDocumentMouseMove, false );
             document.addEventListener( 'touchstart', onDocumentTouchStart, false );
             document.addEventListener( 'touchmove', onDocumentTouchMove, false );
-            document.addEventListener( 'keydown', onKeyDown, false );
             document.addEventListener( 'webkitfullscreenchange', onFullscreenChange, false);
             document.addEventListener( 'mozfullscreenchange', onFullscreenChange, false);
             window.addEventListener( 'resize', onWindowResize, false );
             window.addEventListener( 'keypress', onKeyPress, false);
+            window.addEventListener( 'keydown', onKeyDown, false );
 
             setInterval(updateOrbit, 7000);
 
@@ -303,7 +304,6 @@
             for( i = 0; i < scene.children.length; i++ ) {
                 scene.children[i].needsUpdate = 1;
             }
-
         }
 
         function generateOrbit(){
@@ -418,9 +418,9 @@
         function onFullscreenChange() {
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
             vrEnabled = false;
-            renderer.enableScissorTest ( false );
           } else {
             vrEnabled = true;
+            camera.position.set( 0, 0 , SCALE_FACTOR/2);
           }
           onWindowResize();
         }
@@ -431,26 +431,33 @@
           windowHalfX = window.innerWidth / 2;
           windowHalfY = window.innerHeight / 2;
 
+          // use recommended render target size if in VR
           if (vrEnabled)  {
             if ('getRecommendedEyeRenderRect' in vrHMD) {
               var leftEyeViewport = vrHMD.getRecommendedEyeRenderRect("left");
               var rightEyeViewport = vrHMD.getRecommendedEyeRenderRect("right");
               renderTargetWidth = leftEyeViewport.width + rightEyeViewport.width;
               renderTargetHeight = Math.max(leftEyeViewport.height, rightEyeViewport.height);
-              SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /3200);
-		        } else {
-              renderer.setViewport( 0, 0, window.innerWidth, window.innerHeight );
-              camera.position.set( 0, 0 , SCALE_FACTOR/2);
-              SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
-            }
+		        }
+            SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /3200);
+          } else {
+            SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
           }
+
+
+          // rescale sprites for new resolution
           for (var i = 0; i < scene.children.length; i++){
             scene.children[i].myMaterial.size = SPRITE_SIZE;
           }
 
+          // update camera
           camera.aspect = renderTargetWidth / renderTargetHeight;
           camera.updateProjectionMatrix();
+
+          // change render target size
           renderer.setSize( renderTargetWidth, renderTargetHeight );
+          renderer.setViewport( 0, 0, renderTargetWidth, renderTargetHeight );
+          renderer.enableScissorTest ( false );
         }
 
         function onKeyDown(event){
@@ -493,7 +500,6 @@
 
         function toggleVisuals(){
             if(VISUALS_VISIBLE){
-
                 document.getElementById('aboutlink').style.display = 'none';
                 document.getElementById('about').style.display = 'none';
                 document.getElementById('info').style.display = 'none';
@@ -515,8 +521,9 @@
 
         <div id="aboutlink">
         <a href="javascript:showHideAbout()">About</a>
-    </div>
-    <div id="about">
+        </div>
+
+        <div id="about">
             <b>Barry Martin's Hopalong Orbits Visualizer</b>
             <p>These orbits are generated iterating this simple algorithm:</p>
 
@@ -527,8 +534,6 @@
             <hr>
             <p><a href="http://iacopoapps.appspot.com/hopalongwebgl/">Original version</a> by <a href="https://plus.google.com/113975837825449148012?rel=author">Iacopo Sassarini</a></p>
             <p><a href="https://github.com/dghost/hopalong-vr">WebVR port</a> by <a href="http://dghost.net">Luke Groeninger</a></p>
-
-    </div>
-
+        </div>
     </body>
 </html>
