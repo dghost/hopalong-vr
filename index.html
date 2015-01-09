@@ -251,13 +251,19 @@
           requestAnimationFrame(render);
           if (vrEnabled) {
             var state = vrHMDSensor.getState();
-            camera.position.set(state.position.x * 50,
-              state.position.y * 50,
-              state.position.z * 50 + SCALE_FACTOR/2);
-            camera.quaternion.set(state.orientation.x,
-              state.orientation.y,
-              state.orientation.z,
-              state.orientation.w);
+            if (state.position) {
+              camera.position.set(state.position.x * 50,
+                state.position.y * 50,
+                state.position.z * 50 + SCALE_FACTOR/2);
+            }
+            if (state.orientation) {
+              camera.quaternion.set(state.orientation.x,
+                state.orientation.y,
+                state.orientation.z,
+                state.orientation.w);
+            } else {
+              camera.lookAt( scene.position );
+            }
           } else {
             if (camera.position.x >= - CAMERA_BOUND && camera.position.x <= CAMERA_BOUND){
               camera.position.x += ( mouseX - camera.position.x ) * 0.05;
