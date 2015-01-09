@@ -99,7 +99,7 @@
         // Orbit parameters constraints
         var A_MIN = -30;
         var A_MAX = 30;
-        var B_MIN = .2;
+        var B_MIN = 0.2;
         var B_MAX = 1.8;
         var C_MIN = 5;
         var C_MAX = 17;
@@ -120,7 +120,7 @@
             yMax: 0,
             scaleX: 0,
             scaleY: 0
-        }
+        };
 
         // Initialize data points
         for (var i = 0; i < NUM_SUBSETS; i++){
@@ -157,9 +157,9 @@
           } else if (navigator.mozGetVRDevices) {
             navigator.mozGetVRDevices(vrDeviceCallback);
           } else {
-            var div = document.getElementById('info')
-            div.innerHTML = div.innerHTML + "        <br /> [H] Toggle info and cursor - [F11] Toggle fullscreen";
-            div.innerHTML = div.innerHTML + "        <br />A <a href=http://webvr.info>WebVR compatible browser</a> is required for VR mode";
+            var div = document.getElementById('info');
+            div.innerHTML = div.innerHTML + "\n<br /> [H] Toggle info and cursor - [F11] Toggle fullscreen";
+            div.innerHTML = div.innerHTML + "\n<br />A <a href=http://webvr.info>WebVR compatible browser</a> is required for VR mode";
           }
 
         }, false);
@@ -184,8 +184,8 @@
               }
             }
             vrrenderer = new THREE.VRRenderer(renderer, vrHMD);
-            var div = document.getElementById('info')
-            div.innerHTML = div.innerHTML + "        <br /> [F] Toggle VR rendering - [R] Reset sensor orientation";
+            var div = document.getElementById('info');
+            div.innerHTML = div.innerHTML + "\n<br /> [F] Toggle VR rendering - [R] Reset sensor orientation";
           }
 
         function init() {
@@ -193,6 +193,10 @@
               clearColor: 0x000000, clearAlpha: 1,
               antialias: false,
             });
+
+            // Setup renderer and effects
+            renderer.setSize(renderTargetWidth, renderTargetHeight );
+
             document.body.appendChild( renderer.domElement );
 
             SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
@@ -227,9 +231,6 @@
                     scene.add( particles );
                 }
             }
-
-            // Setup renderer and effects
-            renderer.setSize(renderTargetWidth, renderTargetHeight );
 
             // Setup listeners
             document.addEventListener( 'mousemove', onDocumentMouseMove, false );
@@ -325,8 +326,8 @@
             for (var s = 0; s < NUM_SUBSETS; s++){
 
                 // Use a different starting point for each orbit subset
-                x = s * .005 * (0.5-Math.random());
-                y = s * .005 * (0.5-Math.random());
+                x = s * 0.005 * (0.5-Math.random());
+                y = s * 0.005 * (0.5-Math.random());
 
                 var curSubset = subsets[s];
 
@@ -335,7 +336,7 @@
                     // Iteration formula (generalization of the Barry Martin's original one)
                     z = (dl + Math.sqrt(Math.abs(bl * x - cl)));
                     if (x > 0) {x1 = y - z;}
-                    else if (x == 0) {x1 = y;}
+                    else if (x === 0) {x1 = y;}
                     else {x1 = y + z;}
                     y = al - x;
                     x = x1 + el;
@@ -460,10 +461,10 @@
         }
 
         function onKeyDown(event){
-          if(event.keyCode == 38 && speed < 20) speed += .5;
-          else if(event.keyCode == 40 && speed > 0) speed -= .5;
-          else if(event.keyCode == 37) rotationSpeed += .001;
-          else if(event.keyCode == 39) rotationSpeed -= .001;
+          if(event.keyCode == 38 && speed < 20) speed += 0.5;
+          else if(event.keyCode == 40 && speed > 0) speed -= 0.5;
+          else if(event.keyCode == 37) rotationSpeed += 0.001;
+          else if(event.keyCode == 39) rotationSpeed -= 0.001;
         }
 
         function onKeyPress(event){
