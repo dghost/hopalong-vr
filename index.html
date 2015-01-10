@@ -38,6 +38,7 @@
               top: 0;
               left: 0;
             }
+
             #info {
                 color: #fff;
                 position: absolute;
@@ -151,6 +152,7 @@
         var rotationSpeed = 0.002;
         var vrSupported = false;
         var vrEnabled = false;
+        var isFullscreen = false;
 
         window.addEventListener("load", function() {
           if (navigator.getVRDevices) {
@@ -159,7 +161,7 @@
             navigator.mozGetVRDevices(vrDeviceCallback);
           } else {
             var div = document.getElementById('info');
-            div.innerHTML = div.innerHTML + "\n<br /> [H] Toggle info and cursor - [F11] Toggle fullscreen";
+            div.innerHTML = div.innerHTML + "\n<br /> [H] Toggle info and cursor - [F] Enter fullscreen mode";
             div.innerHTML = div.innerHTML + "\n<br />A <a href=http://webvr.info>WebVR compatible browser</a> is required for VR mode";
           }
 
@@ -186,7 +188,7 @@
             }
             vrrenderer = new THREE.VRRenderer(renderer, vrHMD);
             var div = document.getElementById('info');
-            div.innerHTML = div.innerHTML + "\n<br /> [F] Toggle VR rendering - [R] Reset sensor orientation";
+            div.innerHTML = div.innerHTML + "\n<br /> [F] Enter VR Mode - [R] Reset sensor orientation";
           }
 
         function init() {
@@ -435,19 +437,52 @@
             }
         }
 
+        // launchIntoFullscreen() and exitFullscreen() from
+        // http://davidwalsh.name/fullscreen
+
+        // Find the right method, call on correct element
+        function launchIntoFullscreen(element) {
+          if(element.requestFullscreen) {
+            element.requestFullscreen();
+          } else if(element.mozRequestFullScreen) {
+            element.mozRequestFullScreen();
+          } else if(element.webkitRequestFullscreen) {
+            element.webkitRequestFullscreen();
+          } else if(element.msRequestFullscreen) {
+            element.msRequestFullscreen();
+          }
+        }
+
+        // Whack fullscreen
+        function exitFullscreen() {
+          if(document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if(document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+          } else if(document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        }
+
         function onFullscreenChange() {
           if(!document.webkitFullscreenElement && !document.mozFullScreenElement) {
-            vrEnabled = false;
-            // unhide the mouse and set the device pixel ratio correctly
-            renderer.domElement.style.cursor = "";
-            renderer.devicePixelRatio = window.devicePixelRatio || 1;
+            isFullscreen = false;
+            renderCanvas.style.cursor = "";
+            if (vrSupported) {
+              vrEnabled = false;
+              // unhide the mouse and set the device pixel ratio correctly
+              renderer.devicePixelRatio = window.devicePixelRatio || 1;
+            }
           } else {
-            vrEnabled = true;
-            // reset the camera position
-            camera.position.set( 0, 0 , SCALE_FACTOR/2);
-            // hide the mouse, and set the device pixel ratio to 1
-            renderer.domElement.style.cursor = "none";
-            renderer.devicePixelRatio = 1;
+            isFullscreen = true;
+            renderCanvas.style.cursor = "none";
+            if (vrSupported) {
+              vrEnabled = true;
+              // reset the camera position
+              camera.position.set( 0, 0 , SCALE_FACTOR/2);
+              // hide the mouse, and set the device pixel ratio to 1
+              renderer.devicePixelRatio = 1;
+            }
           }
           // force resolution change
           onWindowResize();
@@ -497,30 +532,32 @@
         }
 
         function onKeyPress(event){
-          if (vrSupported) {
             // handle 'f'
             if (event.which == 70 || event.which == 102) {
-              if (renderCanvas.mozRequestFullScreen) {
-                renderCanvas.mozRequestFullScreen({
-                  vrDisplay: vrHMD
-                });
-              } else if (renderCanvas.webkitRequestFullscreen) {
-                renderCanvas.webkitRequestFullscreen({
-                  vrDisplay: vrHMD,
-                });
+              if (vrEnabled || isFullscreen) {
+                exitFullscreen();
+              } else if (vrSupported) {
+                if (renderCanvas.mozRequestFullScreen) {
+                  renderCanvas.mozRequestFullScreen({
+                    vrDisplay: vrHMD
+                  });
+                } else if (renderCanvas.webkitRequestFullscreen) {
+                  renderCanvas.webkitRequestFullscreen({
+                    vrDisplay: vrHMD,
+                  });
+                }
+              } else {
+                launchIntoFullscreen(renderCanvas);
               }
-            }
+            } else if (vrEnabled && (event.which == 82 || event.which == 114)) {
             // handle 'z'
-            if (event.which == 82 || event.which == 114) {
               vrHMDSensor.zeroSensor();
-            }
-          } else {
-            // handle 'h'
-            if(event.which == 72 || event.which == 104) {
+            } else if(!isFullscreen && (event.which == 72 || event.which == 104)) {
+              // handle 'h'
               toggleVisuals();
-            }
           }
         }
+
 
         function showHideAbout() {
             if (document.getElementById('about').style.display == "block") {
@@ -535,13 +572,13 @@
                 document.getElementById('aboutlink').style.display = 'none';
                 document.getElementById('about').style.display = 'none';
                 document.getElementById('info').style.display = 'none';
-                renderer.domElement.style.cursor = "none";
+                renderCanvas.style.cursor = "none";
                 VISUALS_VISIBLE = false;
             }
             else {
                 document.getElementById('aboutlink').style.display = 'block';
                 document.getElementById('info').style.display = 'block';
-                renderer.domElement.style.cursor = "";
+                renderCanvas.style.cursor = "";
                 VISUALS_VISIBLE = true;
             }
         }
