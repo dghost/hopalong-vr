@@ -478,6 +478,8 @@
             renderCanvas.style.cursor = "none";
             if (vrSupported) {
               vrEnabled = true;
+              // reset the sensor on enable
+              vrHMDSensor.zeroSensor();
               // reset the camera position
               camera.position.set( 0, 0 , SCALE_FACTOR/2);
               // hide the mouse, and set the device pixel ratio to 1
