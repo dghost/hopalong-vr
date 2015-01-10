@@ -13,6 +13,7 @@
         <meta property="og:description" content="An interactive flight through attractor orbits generated using Barry Martin's Hopalong formula."/>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <canvas id="render-canvas"></canvas>
         <style>
             body {
                 background-color: #000000;
@@ -30,7 +31,7 @@
             a {
                 color:#ffffaa;
             }
-            canvas {
+            #render-canvas {
               width: 100%;
               height: 100%;
               position: absolute;
@@ -137,7 +138,7 @@
 
         var container;
         var camera, scene, renderer, vrrenderer, composer, hueValues = [];
-        var vrHMD, vrHMDSensor;
+        var renderCanvas, vrHMD, vrHMDSensor;
 
         var mouseX = 0, mouseY = 0;
         var renderTargetWidth = window.innerWidth;
@@ -189,7 +190,10 @@
           }
 
         function init() {
+            renderCanvas = document.getElementById("render-canvas");
+
             renderer = new THREE.WebGLRenderer({
+              canvas: renderCanvas,
               clearColor: 0x000000, clearAlpha: 1,
               antialias: false,
               devicePixelRatio: window.devicePixelRatio || 1,
@@ -197,8 +201,6 @@
 
             // Setup renderer and effects
             renderer.setSize(renderTargetWidth, renderTargetHeight );
-
-            document.body.appendChild( renderer.domElement );
 
             SPRITE_SIZE = Math.ceil(3 * renderTargetWidth /1600);
 
@@ -498,12 +500,12 @@
           if (vrSupported) {
             // handle 'f'
             if (event.which == 70 || event.which == 102) {
-              if (renderer.domElement.mozRequestFullScreen) {
-                renderer.domElement.mozRequestFullScreen({
+              if (renderCanvas.mozRequestFullScreen) {
+                renderCanvas.mozRequestFullScreen({
                   vrDisplay: vrHMD
                 });
-              } else if (renderer.domElement.webkitRequestFullscreen) {
-                renderer.domElement.webkitRequestFullscreen({
+              } else if (renderCanvas.webkitRequestFullscreen) {
+                renderCanvas.webkitRequestFullscreen({
                   vrDisplay: vrHMD,
                 });
               }
